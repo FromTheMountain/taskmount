@@ -1,7 +1,8 @@
 create table "todos" (
-	"id" integer not null,
+	"id" bigserial primary key,
 	"description" text not null,
+	"priority" integer not null,
 	"completed" timestamp,
 	"start_date" timestamp,
 	"deadline" timestamp
-)
+);
