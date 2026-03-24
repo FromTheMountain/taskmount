@@ -29,8 +29,8 @@
 
   <p v-if="loading" class="loading">Loading…</p>
 
+  <div v-else class="table-scroll">
   <table
-    v-else
     class="todo-table"
     @drop.prevent="onDrop"
     @dragover.prevent
@@ -131,6 +131,7 @@
       />
     </tbody>
   </table>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -511,6 +512,11 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
 
 .loading { color: #888; }
 
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .todo-table {
   width: 100%;
   border-collapse: collapse;
@@ -546,7 +552,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
 .todo-table tbody tr[draggable]:active { cursor: grabbing; }
 
 .col-done { width: 2rem; text-align: center; }
-.col-description { width: 100%; max-width: 0; }
+.col-description { width: 100%; max-width: 0; min-width: 14rem; }
 .todo-table .col-description { white-space: normal; word-break: break-word; }
 .col-date { width: 10rem; }
 .col-actions { width: 5rem; text-align: right; }

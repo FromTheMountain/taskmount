@@ -176,10 +176,11 @@ async function importTodos() {
   display: flex;
   align-items: flex-end;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .add-btn {
-  align-self: flex-end;
+  /* align-self: flex-end; */
 }
 
 .form-date-label {
