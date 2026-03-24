@@ -444,7 +444,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
 
 .sort-label {
   font-size: 0.85rem;
-  color: #666;
+  color: #a8a095;
   white-space: nowrap;
 }
 
@@ -459,14 +459,14 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
-  background: #eef2ff;
-  border: 1px solid #c7d2fe;
+  background: #1d1f20;
+  border: 1px solid #021975;
   border-radius: 4px;
   padding: 0.15rem 0.4rem;
   font-size: 0.85rem;
 }
 
-.sort-chip-label { color: #3730a3; }
+.sort-chip-label { color: #7697D7; }
 
 .sort-chip-dir,
 .sort-chip-remove {
@@ -476,7 +476,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
   padding: 0 0.1rem;
   font-size: 0.85rem;
   line-height: 1;
-  color: #6366f1;
+  color: #6398f1;
 }
 
 .sort-chip-remove { color: #a5b4fc; font-size: 1rem; }
@@ -504,7 +504,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
   align-items: center;
   gap: 0.35rem;
   font-size: 0.875rem;
-  color: #555;
+  color: #b2aca2;
   cursor: pointer;
   user-select: none;
 }
@@ -520,7 +520,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
 .todo-table th,
 .todo-table td {
   padding: 0.5rem 0.6rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #393d40;
   text-align: left;
   vertical-align: middle;
   white-space: nowrap;
@@ -528,11 +528,11 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
 
 .todo-table thead th {
   font-weight: 600;
-  color: #444;
-  background: #f5f5f5;
+  color: #bdb7af;
+  background: #1e2021;
 }
 
-.todo-table tr.selected td { background: #e0e7ff; }
+.todo-table tr.selected td { background: #212325; }
 
 .todo-table tr.completed td span {
   text-decoration: line-through;
@@ -595,5 +595,5 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
   font-size: 0.95rem;
 }
 
-.btn-danger { background: #e74c3c; color: #fff; }
+.btn-danger { background: #a22114; color: #fff; }
 </style>

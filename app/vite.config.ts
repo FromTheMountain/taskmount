@@ -9,6 +9,7 @@ export default defineConfig({
   base: '/taskmount/',
   build: {
     outDir: '../docs',
+    emptyOutDir: true,
   },
   plugins: [
     vue(),

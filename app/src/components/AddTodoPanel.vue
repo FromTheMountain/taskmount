@@ -132,7 +132,7 @@ async function importTodos() {
 
 .tab-bar {
   display: flex;
-  border-bottom: 2px solid #c7d2fe;
+  border-bottom: 2px solid #021975;
 }
 
 .tab-btn {
@@ -141,20 +141,20 @@ async function importTodos() {
   background: none;
   cursor: pointer;
   font-size: 0.95rem;
-  color: #666;
+  color: #a8a095;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
 }
 
 .tab-btn.active {
-  color: #3730a3;
-  border-bottom-color: #3730a3;
+  color: #7697d7;
+  border-bottom-color: #322c94;
   font-weight: 600;
 }
 
 .tab-panel {
-  background: #f5f7ff;
-  border: 1px solid #c7d2fe;
+  background: #1b1d1e;
+  border: 1px solid #021975;
   border-top: none;
   border-radius: 0 0 6px 6px;
   padding: 0.75rem;
@@ -169,6 +169,7 @@ async function importTodos() {
 .description-input {
   width: 100%;
   box-sizing: border-box;
+  color: #a8a09d;
 }
 
 .add-form-bottom {
@@ -186,7 +187,7 @@ async function importTodos() {
   flex-direction: column;
   gap: 0.2rem;
   font-size: 0.78rem;
-  color: #666;
+  color: #a8a095;
 }
 
 .import-form {
@@ -197,7 +198,7 @@ async function importTodos() {
 
 .import-hint {
   margin: 0;
-  color: #666;
+  color: #a8a095;
   font-size: 0.9rem;
 }
 
@@ -205,11 +206,16 @@ async function importTodos() {
   width: 100%;
   height: 160px;
   padding: 0.5rem;
-  border: 1px solid #ccc;
+  border: 1px solid #3e4446;
   border-radius: 4px;
   font-size: 0.95rem;
   resize: vertical;
   box-sizing: border-box;
+  /* background-color: #2b2a33; */
+}
+
+.import-textarea::placeholder {
+  color: #6e6a69;
 }
 
 .import-btn {
@@ -218,9 +224,10 @@ async function importTodos() {
 
 .input {
   padding: 0.4rem 0.6rem;
-  border: 1px solid #ccc;
+  border: 1px solid #3e4446;
   border-radius: 4px;
   font-size: 0.95rem;
+  background-color: #2b2a33;
 }
 
 .btn {
@@ -232,7 +239,7 @@ async function importTodos() {
 }
 
 .btn-primary {
-  background: #4f8ef7;
+  background: #073e9a;
   color: #fff;
 }
 

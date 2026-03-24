@@ -92,8 +92,8 @@ onMounted(async () => {
   top: 0;
   left: 0;
   right: 0;
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
+  background: #181A1B;
+  border-bottom: 1px solid #393d40;
   z-index: 50;
   font-family: sans-serif;
 }
@@ -128,8 +128,8 @@ onMounted(async () => {
 }
 
 .btn-secondary {
-  background: #e0e0e0;
-  color: #333;
+  background: #2a2d2f;
+  color: #c8c3bc;
 }
 
 .sign-out-btn {
