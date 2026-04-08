@@ -70,9 +70,50 @@
           />
         </td>
         <td class="col-description">
-          <span v-if="editingId !== todo.id" @dblclick="startEdit(todo)">
-            {{ todo.description }}
-          </span>
+          <div v-if="editingId !== todo.id" class="description-cell">
+            <span class="description-text" @dblclick="startEdit(todo)">
+              {{ todo.description }}
+            </span>
+            <div class="labels-and-add">
+              <div v-if="todo.todo_labels?.length" class="labels-container">
+                <span v-for="item in todo.todo_labels" :key="item.labels.id" class="label-badge">
+                  {{ item.labels.name }}
+                  <button
+                    type="button"
+                    class="label-badge-remove"
+                    @click="removeLabelFromTodo(todo, item.labels.id)"
+                    title="Remove label"
+                  >
+                    ×
+                  </button>
+                </span>
+              </div>
+              <button
+                v-if="addingLabelForTodo !== todo.id"
+                type="button"
+                class="label-add-btn"
+                @click="addingLabelForTodo = todo.id"
+                title="Add label"
+              >
+                <font-awesome-icon icon="plus" />
+              </button>
+              <div v-else class="label-input-wrapper">
+                <input
+                  ref="labelInputRef"
+                  v-model="newLabelInput"
+                  v-focus
+                  type="text"
+                  placeholder="Label name"
+                  class="label-badge-input"
+                  @input="onLabelInputChange"
+                  @keyup.enter="addLabelToTodo(todo)"
+                  @keyup.escape="addingLabelForTodo = null"
+                  @blur="addingLabelForTodo = null"
+                />
+                <span class="label-input-shadow">{{ newLabelInput }}w</span>
+              </div>
+            </div>
+          </div>
           <input
             v-else
             v-model="editDescription"
@@ -135,9 +176,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { supabase, type Todo } from '../supabase'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { supabase, type Todo, type Label } from '../supabase'
 import { toDateOnly, toRelativeDate, toIso } from '../utils/dates'
+import { PRIORITY_STEP } from '../utils/priority'
+import { findOrCreateLabel, insertTodoLabels, removeTodoLabel, fetchAllLabels } from '../services/todoService'
+import { findLabelMatch, applyLabelSelection } from '../utils/labelAutocomplete'
 
 const vFocus = { mounted: (el: HTMLElement) => el.focus() }
 
@@ -243,6 +287,10 @@ function onDocumentClick(e: MouseEvent) {
 const editingId = ref<number | null>(null)
 const editDescription = ref('')
 const editingDateKey = ref<string | null>(null)
+const addingLabelForTodo = ref<number | null>(null)
+const newLabelInput = ref('')
+const labelInputRef = ref<HTMLInputElement | HTMLInputElement[] | null>(null)
+const cachedLabels = ref<Label[]>([])
 
 
 async function toggleCompleted(todo: Todo) {
@@ -285,9 +333,70 @@ async function deleteTodo(id: number) {
   else emit('delete', id)
 }
 
-// ── Drag-and-drop ────────────────────────────────────────────────────────────
+async function onLabelInputChange() {
+  const currentValue = newLabelInput.value
 
-const PRIORITY_STEP = 65536
+  // Auto-complete against cached labels
+  const match = findLabelMatch(currentValue, cachedLabels.value)
+  if (match && match.name !== currentValue) {
+    // Auto-fill with the matched label
+    newLabelInput.value = match.name
+
+    // Select the auto-filled portion so it can be overwritten
+    await nextTick()
+    const inputEl = Array.isArray(labelInputRef.value) ? labelInputRef.value[0] : labelInputRef.value
+    if (inputEl) {
+      applyLabelSelection(inputEl, currentValue.trim().length, match.name.length)
+    }
+  }
+}
+
+async function addLabelToTodo(todo: Todo) {
+  const labelName = newLabelInput.value.trim()
+  if (!labelName) {
+    addingLabelForTodo.value = null
+    return
+  }
+
+  // Check if label already exists locally
+  let label = todo.todo_labels?.find(item => item.labels.name.toLowerCase() === labelName.toLowerCase())?.labels
+  if (label) {
+    addingLabelForTodo.value = null
+    newLabelInput.value = ''
+    return
+  }
+
+  try {
+    const newLabel = await findOrCreateLabel(labelName)
+    await insertTodoLabels(todo.id, [newLabel])
+
+    // Update the todo's labels locally
+    if (!todo.todo_labels) {
+      todo.todo_labels = []
+    }
+    todo.todo_labels.push({ labels: newLabel })
+  } catch (error) {
+    emit('error', error instanceof Error ? error.message : 'Failed to add label')
+  }
+
+  addingLabelForTodo.value = null
+  newLabelInput.value = ''
+}
+
+async function removeLabelFromTodo(todo: Todo, labelId: number) {
+  try {
+    await removeTodoLabel(todo.id, labelId)
+
+    // Remove from local UI
+    if (todo.todo_labels) {
+      todo.todo_labels = todo.todo_labels.filter(item => item.labels.id !== labelId)
+    }
+  } catch (error) {
+    emit('error', error instanceof Error ? error.message : 'Failed to remove label')
+  }
+}
+
+// ── Drag-and-drop ────────────────────────────────────────────────────────────
 const draggingId = ref<number | null>(null)
 const dropBeforeId = ref<number | 'end' | null>(null)
 
@@ -430,7 +539,14 @@ function onDragEnd() {
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 
-onMounted(() => document.addEventListener('click', onDocumentClick))
+onMounted(async () => {
+  document.addEventListener('click', onDocumentClick)
+  try {
+    cachedLabels.value = await fetchAllLabels()
+  } catch (error) {
+    console.error('Failed to fetch labels:', error)
+  }
+})
 onUnmounted(() => document.removeEventListener('click', onDocumentClick))
 </script>
 
@@ -559,7 +675,115 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
 
 .checkbox { width: 1.1rem; height: 1.1rem; cursor: pointer; }
 
-.col-description span { cursor: text; display: block; }
+.description-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.description-text { cursor: text; }
+
+.labels-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.label-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #1a3a52;
+  color: #6fa3d1;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  border: 1px solid #2a5080;
+}
+
+.label-badge-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6fa3d1;
+  font-size: 1rem;
+  padding: 0;
+  line-height: 1;
+  font-family: inherit;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.label-badge-remove:hover {
+  opacity: 1;
+  color: #e74c3c;
+}
+
+.labels-and-add {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.label-add-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6a6562;
+  font-size: 0.9rem;
+  padding: 0.2rem 0.4rem;
+  line-height: 1;
+  font-family: inherit;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.description-cell:hover .label-add-btn {
+  opacity: 1;
+}
+
+.label-add-btn:hover {
+  color: #a8a095;
+}
+
+.label-input-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.label-badge-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #1a3a52;
+  color: #6fa3d1;
+  padding: 0.25rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  border: 1px solid #2a5080;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.label-badge-input::placeholder {
+  color: #4a6a82;
+}
+
+.label-input-shadow {
+  display: inline-block;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.8rem;
+  border-radius: 3px;
+  font-family: inherit;
+  min-width: 80px;
+}
 
 .input {
   padding: 0.4rem 0.6rem;

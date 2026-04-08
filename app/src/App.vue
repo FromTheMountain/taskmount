@@ -32,6 +32,7 @@
 import { ref, onMounted } from 'vue'
 import { supabase, type Todo } from './supabase'
 import type { Session } from '@supabase/supabase-js'
+import { fetchTodos as fetchTodosFromService } from './services/todoService'
 import AuthScreen from './components/AuthScreen.vue'
 import AddTodoPanel from './components/AddTodoPanel.vue'
 import TodoTable from './components/TodoTable.vue'
@@ -65,10 +66,13 @@ function onAddRollback(tempId: number, message: string) {
 async function fetchTodos() {
   loading.value = true
   error.value = null
-  const { data, error: err } = await supabase.from('todos').select('*').order('id')
-  if (err) error.value = err.message
-  else todos.value = data as Todo[]
-  loading.value = false
+  try {
+    todos.value = await fetchTodosFromService()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Unknown error'
+  } finally {
+    loading.value = false
+  }
 }
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
