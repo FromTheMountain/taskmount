@@ -264,6 +264,15 @@ function onRowClick(todo: Todo, event: MouseEvent) {
       if (t) next.add(t.id)
     }
     selectedIds.value = next
+  } else if (event.ctrlKey || event.metaKey) {
+    const next = new Set(selectedIds.value)
+    if (next.has(todo.id)) {
+      next.delete(todo.id)
+    } else {
+      next.add(todo.id)
+    }
+    selectedIds.value = next
+    selectionAnchorIdx.value = idx
   } else {
     if (selectedIds.value.has(todo.id) && selectedIds.value.size === 1) {
       selectedIds.value = new Set()
