@@ -173,6 +173,47 @@
     </tbody>
   </table>
   </div>
+
+  <!-- Confirmation modal -->
+  <div v-if="showConfirmModal" class="modal-overlay" @click.self="showConfirmModal = false">
+    <div class="modal-content">
+      <h2 class="modal-title">Confirm bulk edit</h2>
+      <p class="modal-text">You're about to change <strong>{{ selectedIds.size }} {{ selectedIds.size === 1 ? 'todo' : 'todos' }}</strong>:</p>
+      <ul class="modal-changes">
+        <li v-for="(change, idx) in bulkChangeSummary" :key="idx">{{ change }}</li>
+      </ul>
+      <p class="modal-warning">This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="showConfirmModal = false">Cancel</button>
+        <button class="btn btn-primary" @click="confirmBulkEdit">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky bulk edit bar -->
+  <div v-if="selectedIds.size > 0" class="sticky-bulk-bar">
+    <div class="bulk-bar-content">
+      <span class="bulk-bar-info">{{ selectedIds.size }} {{ selectedIds.size === 1 ? 'todo' : 'todos' }} selected</span>
+      <div class="bulk-bar-fields">
+        <label class="bulk-field">
+          <span class="bulk-label">Mark as done:</span>
+          <input type="checkbox" v-model="bulkDone" class="checkbox" />
+        </label>
+        <label class="bulk-field">
+          <span class="bulk-label">Start date:</span>
+          <input type="date" v-model="bulkStartDate" class="bulk-date-input" />
+        </label>
+        <label class="bulk-field">
+          <span class="bulk-label">Deadline:</span>
+          <input type="date" v-model="bulkDeadline" class="bulk-date-input" />
+        </label>
+      </div>
+      <div class="bulk-bar-actions">
+        <button class="btn btn-secondary" @click="clearBulkEdit">Cancel</button>
+        <button class="btn btn-primary" @click="showBulkConfirm" :disabled="!hasBulkChanges">Apply</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -285,10 +326,82 @@ function onRowClick(todo: Todo, event: MouseEvent) {
 }
 
 function onDocumentClick(e: MouseEvent) {
-  if (!(e.target as HTMLElement).closest('.todo-table')) {
+  if (!(e.target as HTMLElement).closest('.todo-table, .sticky-bulk-bar, .modal-overlay')) {
     selectedIds.value = new Set()
     selectionAnchorIdx.value = null
   }
+}
+
+// ── Bulk Edit ────────────────────────────────────────────────────────────────
+
+const bulkDone = ref(false)
+const bulkDeadline = ref('')
+const bulkStartDate = ref('')
+const showConfirmModal = ref(false)
+
+const hasBulkChanges = computed(() => {
+  return bulkDone.value || bulkDeadline.value || bulkStartDate.value
+})
+
+const bulkChangeSummary = computed(() => {
+  const changes: string[] = []
+  if (bulkDone.value) changes.push('Mark as done')
+  if (bulkDeadline.value) changes.push(`Set deadline to ${bulkDeadline.value}`)
+  if (bulkStartDate.value) changes.push(`Set start date to ${bulkStartDate.value}`)
+  return changes
+})
+
+function clearBulkEdit() {
+  selectedIds.value = new Set()
+  selectionAnchorIdx.value = null
+  resetBulkFields()
+}
+
+function resetBulkFields() {
+  bulkDone.value = false
+  bulkDeadline.value = ''
+  bulkStartDate.value = ''
+}
+
+function showBulkConfirm() {
+  showConfirmModal.value = true
+}
+
+async function confirmBulkEdit() {
+  const selectedArray = Array.from(selectedIds.value)
+  const updates: Record<string, any> = {}
+
+  if (bulkDone.value) {
+    updates.completed = new Date().toISOString()
+  }
+  if (bulkDeadline.value) {
+    updates.deadline = toIso(bulkDeadline.value)
+  }
+  if (bulkStartDate.value) {
+    updates.start_date = toIso(bulkStartDate.value)
+  }
+
+  // Optimistic update: update local todos first
+  for (const todoId of selectedArray) {
+    const todo = props.todos.find(t => t.id === todoId)
+    if (todo) {
+      Object.assign(todo, updates)
+    }
+  }
+
+  try {
+    // Sync to DB
+    await Promise.all(
+      selectedArray.map(id =>
+        supabase.from('todos').update(updates).eq('id', id)
+      )
+    )
+  } catch (error) {
+    emit('error', error instanceof Error ? error.message : 'Failed to update todos')
+  }
+
+  showConfirmModal.value = false
+  clearBulkEdit()
 }
 
 // ── Editing ─────────────────────────────────────────────────────────────────
@@ -835,4 +948,140 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
 }
 
 .btn-danger { background: #a22114; color: #fff; }
+.btn-primary { background: #0066cc; color: #fff; }
+.btn-secondary { background: #555; color: #fff; }
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sticky-bulk-bar {
+  position: sticky;
+  bottom: 0;
+  background: #1e2021;
+  border-top: 2px solid #393d40;
+  padding: 0.75rem 0.6rem;
+  z-index: 10;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.bulk-bar-content {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.bulk-bar-info {
+  font-size: 0.9rem;
+  color: #bdb7af;
+  min-width: 120px;
+}
+
+.bulk-bar-fields {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.bulk-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #bdb7af;
+  cursor: pointer;
+  user-select: none;
+}
+
+.bulk-label {
+  white-space: nowrap;
+}
+
+.bulk-date-input {
+  padding: 0.4rem;
+  border: 1px solid #555;
+  border-radius: 3px;
+  background: #2a2d30;
+  color: #bdb7af;
+  font-size: 0.9rem;
+  width: 120px;
+}
+
+.bulk-date-input::placeholder {
+  color: #666;
+}
+
+.bulk-bar-actions {
+  display: flex;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #1e2021;
+  border: 1px solid #393d40;
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.modal-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  color: #bdb7af;
+}
+
+.modal-text {
+  margin: 0 0 0.75rem 0;
+  color: #b2aca2;
+  font-size: 0.95rem;
+}
+
+.modal-changes {
+  list-style: none;
+  padding: 0.75rem 0;
+  margin: 0 0 1rem 0;
+  background: #2a2d30;
+  border-left: 3px solid #0066cc;
+  padding-left: 1rem;
+}
+
+.modal-changes li {
+  color: #8b8580;
+  font-size: 0.9rem;
+  margin: 0.4rem 0;
+  font-family: monospace;
+}
+
+.modal-warning {
+  margin: 0 0 1.5rem 0;
+  color: #e74c3c;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
 </style>
